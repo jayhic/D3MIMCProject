@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- modified from https://bl.ocks.org/mbostock/3887051 !-->
+
+<style>
+
+.axis .domain {
+  display: none;
+}
+
+.toolTip {		<!-- tooltip that sets up the hover feature !-->
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    position: absolute;
+    display: none;
+    width: auto;
+    height: auto;
+    background: none repeat scroll 0 0 white;
+    border: 0 none;
+    border-radius: 8px 8px 8px 8px;
+    box-shadow: -3px 3px 15px #888888;
+    color: black;
+	font: 12px sans-serif;
+	padding: 5px;
+    text-align: center;
+}
+</style>
+
+<svg width="960" height="500"></svg>	<!-- Set SVG Area !-->
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+	
+	var svg = d3.select("svg"),	//Establish the drawing area for the visualization 
+		margin = {top: 20, right: 20, bottom: 30, left: 40},
+		width = +svg.attr("width") - margin.left - margin.right,
+		height = +svg.attr("height") - margin.top - margin.bottom,
+		g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var x0 = d3.scaleBand()		//Space between item in group
+		.rangeRound([0, width])
+		.paddingInner(0.1);
+
+	var x1 = d3.scaleBand()		//Space between groupings
+		.padding(0.05);
+
+	var y = d3.scaleLinear()	//Establish scale for how high the bars will go
+		.rangeRound([height, 0]);
+
+	var z = d3.scaleOrdinal()	
+		.range(["#d65108", "#007aa3", "#efc021", "#672b53"]);	//Set Colors for Graph
+
+	var year = window.location.href.slice(-4);		//Set var year is the last 4 characters of the URL	
+	
+	//If more years are added need to add an if statement in order to use it
+	if(year==1973){			//Once URL is sliced it will compare year to see which CSV file to use
+		var csv="Grouped Bar Chart CSV/Grouped Bar Chart Data - 1973.csv"}
+		
+	if(year==1974){
+		var csv="Grouped Bar Chart CSV/Grouped Bar Chart Data - 1974.csv"}
+		
+	if(year==1975){
+		var csv="Grouped Bar Chart CSV/Grouped Bar Chart Data - 1975.csv"} 
+	
+		d3.csv(csv, function(d, i, columns) {			//Read in CSV
+			for (var i = 1, n = columns.length; i < n; ++i) 
+			d[columns[i]] = +d[columns[i]]; 
+			return d;},
+		function(data) {
+		
+	var keys = data.columns.slice(1);							//JavaScript .slice selects the keys
+
+	x0.domain(data.map(function(d) { return d.Date; }));
+	x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+	y.domain([0, d3.max(data, function(d) { return d3.max(keys, function(key) { return d[key]; }); })]).nice();
+
+	g.append("g")												//Draws Bars onto the SVG
+		.selectAll("g")
+		.data(data)
+		.enter().append("g")
+		.attr("transform", function(d) { return "translate(" + x0(d.Date) + ",0)"; })
+		.selectAll("rect")
+		.data(function(d) { return keys.map(function(key) { return {key: key, value: d[key]}; }); })
+		.enter().append("rect")
+		.attr("x", function(d) { return x1(d.key); })
+		.attr("y", function(d) { return y(d.value); })
+		.attr("width", x1.bandwidth())
+		.attr("height", function(d) { return height - y(d.value); })
+		.attr("fill", function(d) { return z(d.key); })
+		
+	g.append("g")												//Draws on Axis
+		.attr("class", "axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(d3.axisBottom(x0));
+
+	g.append("g")
+		.attr("class", "axis")
+		.call(d3.axisLeft(y).ticks(null, "s"))
+		.append("text")
+		.attr("x", 2)
+		.attr("y", y(y.ticks().pop()) + 0.5)
+		.attr("dy", "0.32em")
+		.attr("fill", "#000")
+		.attr("font-weight", "bold")
+		.attr("text-anchor", "start")
+		.text("Number of instances in Travel Sheet");
+   
+	var divTooltip = d3.select("body").append("div").attr("class", "toolTip"); //Implements the tooltip hover feature
+      
+	g.on("mousemove", function(d){	
+        divTooltip.style("left", d3.event.pageX+10+"px");
+        divTooltip.style("top", d3.event.pageY-25+"px");
+        divTooltip.style("display", "inline-block");
+        var x = d3.event.pageX, y = d3.event.pageY
+        var elements = document.querySelectorAll(':hover');
+        l = elements.length
+        l = l-1
+        elementData = elements[l].__data__
+        divTooltip.html(elementData.value);
+        });
+	g.on("mouseout", function(d){
+        divTooltip.style("display", "none");
+		});
+		
+	var legend = g.append("g")		//Attach legend to chart
+		.attr("font-family", "sans-serif")
+		.attr("font-size", 10)
+		.attr("text-anchor", "end")
+		.selectAll("g")
+		.data(keys.slice())
+		.enter().append("g")
+		.attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+	legend.append("rect")			//Draws on the little squares for the legend	
+		.attr("x", width)		//Starting point is from the right side of the screen and working to the left
+		.attr("width", 19)
+		.attr("height", 19)
+		.attr("fill", z);
+
+	legend.append("text")			//Attaches the text for the legend
+		.attr("x", width-5)		//Starting point is from the right side of the screen and working to the left
+		.attr("y", 9.5)
+		.attr("dy", "0.32em")
+		.text(function(d) { return d; });
+
+ });
+
+</script>
+
+<h4>Explore Data By Issue</h4>
+
+<p>Force Graphs</p>
+<p id="demo"> </p>
+
+<script>
+	var year = window.location.href.slice(-4);	
+	
+	if (year == 1973){
+		var links= 
+		'<a href="Force%20Graph%20-%20Issues.html?sep73">September 1973</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?oct73">October 1973</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?dec73">December 1973</a> ';}
+		
+	if (year == 1974){
+		var links= 
+		'<a href="Force%20Graph%20-%20Issues.html?jan74">January 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?feb74">February 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?mar74">March 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?apr74">April 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?may74">May 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?jun74">June 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?jul74">July 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?aug74">August 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?sep74">September 1974</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?dec74">December 1974</a>';}
+	
+	if (year == 1975){
+		var links = 
+		'<a href="Force%20Graph%20-%20Issues.html?jan75">January 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?mar75">March 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?apr75">April 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?may75">May 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?jun75">June 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?aug75">August 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?sep75">September 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?oct75">October 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?nov75">November 1975</a> '
+		+ '<a href="Force%20Graph%20-%20Issues.html?dec75">December 1975</a>';}
+
+    document.getElementById("demo").innerHTML = links;
+
+</script>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!-- modified from https://bl.ocks.org/mbostock/3887051 !-->
+
+<style>
+
+.axis .domain {
+  display: none;
+}
+
+.toolTip {		<!-- tooltip that sets up the hover feature !-->
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    position: absolute;
+    display: none;
+    width: auto;
+    height: auto;
+    background: none repeat scroll 0 0 white;
+    border: 0 none;
+    border-radius: 8px 8px 8px 8px;
+    box-shadow: -3px 3px 15px #888888;
+    color: black;
+    font: 12px sans-serif;
+    padding: 5px;
+    text-align: center;
+}
+</style>
+
+<svg width="960" height="500"></svg>	<!-- Set SVG Area !-->
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+	var svg = d3.select("svg"),	//Establish the drawing area for the visualization 
+		margin = {top: 20, right: 20, bottom: 30, left: 40},
+		width = +svg.attr("width") - margin.left - margin.right,
+		height = +svg.attr("height") - margin.top - margin.bottom,
+		g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var x0 = d3.scaleBand()		//Space between item in group
+		.rangeRound([0, width])
+		.paddingInner(0.1);
+
+	var x1 = d3.scaleBand()		//Space between groupings
+		.padding(0.05);
+
+	var y = d3.scaleLinear()	//Establish scale for how high the bars will go
+		.rangeRound([height, 0]);
+
+	var z = d3.scaleOrdinal()	
+		.range(["#d65108", "#007aa3", "#efc021"]);	//Set Colors for Graph
+
+d3.csv("Grouped Bar Chart CSV/Grouped Bar Chart Year Data.csv", function(d, i, columns) {			//Read in CSV
+		for (var i = 1, n = columns.length; i < n; ++i) 
+		d[columns[i]] = +d[columns[i]]; 
+		return d;}, 
+	function(data) {
+
+	var keys = data.columns.slice(1);							//JavaScript .slice selects the keys
+
+	x0.domain(data.map(function(d) { return d.Year; }));
+	x1.domain(keys).rangeRound([0, x0.bandwidth()]);
+	y.domain([0, d3.max(data, function(d) { return d3.max(keys, function(key) { return d[key]; }); })]).nice();
+
+	g.append("g")												//Draws Bars onto the SVG
+		.selectAll("g")
+		.data(data)
+		.enter().append("g")
+		.attr("transform", function(d) { return "translate(" + x0(d.Year) + ",0)"; })
+		.selectAll("rect")
+		.data(function(d) { return keys.map(function(key) { return {key: key, value: d[key]}; }); })
+		.enter().append("rect")
+		.attr("x", function(d) { return x1(d.key); })
+		.attr("y", function(d) { return y(d.value); })
+		.attr("width", x1.bandwidth())
+		.attr("height", function(d) { return height - y(d.value); })
+		.attr("fill", function(d) { return z(d.key); })
+		.on("dblclick", function(d) {window.open("Grouped%20Bar%20Chart%20-%20Issues.html?"+d.value);}); //What to put after + to get year...
+
+	g.append("g")												//Draws on Axis
+		.attr("class", "axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(d3.axisBottom(x0));
+
+	g.append("g")
+		.attr("class", "axis")
+		.call(d3.axisLeft(y).ticks(null, "s"))
+		.append("text")
+		.attr("x", 2)
+		.attr("y", y(y.ticks().pop()) + 0.5)
+		.attr("dy", "0.32em")
+		.attr("fill", "#000")
+		.attr("font-weight", "bold")
+		.attr("text-anchor", "start")
+		.text("Number of instances in Travel Sheet");
+   
+	var divTooltip = d3.select("body").append("div").attr("class", "toolTip"); //Implements the tooltip hover feature
+      
+	g.on("mousemove", function(d){
+        divTooltip.style("left", d3.event.pageX+10+"px");
+        divTooltip.style("top", d3.event.pageY-25+"px");
+        divTooltip.style("display", "inline-block");
+        var x = d3.event.pageX, y = d3.event.pageY
+        var elements = document.querySelectorAll(':hover');
+        l = elements.length
+        l = l-1
+        elementData = elements[l].__data__
+        divTooltip.html(elementData.value);
+        });
+	g.on("mouseout", function(d){
+        divTooltip.style("display", "none");
+		});
+		
+	var legend = g.append("g")		//Attach legend to chart
+		.attr("font-family", "sans-serif")
+		.attr("font-size", 10)
+		.attr("text-anchor", "end")
+		.selectAll("g")
+		.data(keys.slice())
+		.enter().append("g")
+		.attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+	legend.append("rect")			//Draws on the little squares for the legend	
+		.attr("x", width)		//Starting point is from the right side of the screen and working to the left
+		.attr("width", 19)
+		.attr("height", 19)
+		.attr("fill", z);
+
+	legend.append("text")			//Attaches the text for the legend
+		.attr("x", width-5)		//Starting point is from the right side of the screen and working to the left
+		.attr("y", 9.5)
+		.attr("dy", "0.32em")
+		.text(function(d) { return d; });
+});
+
+</script>
+<h4>Explore Data By Year</h4>
+<p>Bar Charts<br/>
+<a href="Grouped%20Bar%20Chart%20-%20Issues.html?1973">1973</a> <a href="Grouped%20Bar%20Chart%20-%20Issues.html?1974">1974</a> <a href="Grouped%20Bar%20Chart%20-%20Issues.html?1975">1975</a>
+</p>
+<p>Force Graphs<br/>
+<a href="Force%20Graph%20-%20Year.html?1973">1973</a> <a href="Force%20Graph%20-%20Year.html?1974">1974</a> <a href="Force%20Graph%20-%20Year.html?1975">1975</a>
+</p>

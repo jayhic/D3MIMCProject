@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- modified from https://gist.github.com/timelyportfolio/5049980/ !-->
+
+<style>
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+</style>
+<body>
+	<p>Select starting issue</p>
+	<form id="StartDate">	<!-- the form to select the range of dates -->
+		<select name="Month">
+			<option value=1>January</option>
+			<option value=2>February</option>
+			<option value=3>March</option>
+			<option value=4>April</option>
+			<option value=5>May</option>
+			<option value=6>June</option>
+			<option value=7>July</option>
+			<option value=8>August</option>
+			<option value=9>September</option>
+			<option value=10>October</option>
+			<option value=11>November</option>
+			<option value=12>December</option>
+		</select>
+		<select name="Year">
+			<option value=1973>1973</option>
+			<option value=1974>1974</option>
+			<option value=1975>1975</option>
+		</select>
+	</form> 
+	<p>Select ending issue</p>
+	<form id="EndDate">
+		<select name="Month">
+			<option value=1>January</option>
+			<option value=2>February</option>
+			<option value=3>March</option>
+			<option value=4>April</option>
+			<option value=5>May</option>
+			<option value=6>June</option>
+			<option value=7>July</option>
+			<option value=8>August</option>
+			<option value=9>September</option>
+			<option value=10>October</option>
+			<option value=11>November</option>
+			<option value=12>December</option>
+		</select>
+		<select name="Year">
+			<option value=1973>1973</option>
+			<option value=1974>1974</option>
+			<option value=1975>1975</option>
+		</select>
+	</form> 
+	
+	<button onclick="setDates()">Run</button>
+
+<p> </p>
+<script src="http://d3js.org/d3.v3.js"></script>
+<script>
+	var startMonth;	//Establish global variables for start and and date
+	var startYear;
+	var endMonth;
+	var endYear;
+
+    function draw(){ //The function that will be called by the function that is ran when the button is pressed to draw the force graph
+		var width = 750,	
+			height = 750;
+		var color = ["#efc021", "#d65108", "#007aa3"]; //Colors for the graph
+		var force = d3.layout.force()
+			.charge(-30)
+			.linkDistance(5)
+			.size([width, height]);
+		var svg = d3.select("body").append("svg")	//Draw the blank svg
+			.attr("width", width)
+			.attr("height", height)
+			.call(d3.behavior.zoom().on("zoom", function () {
+			svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")
+			}))
+			.on("dblclick.zoom", null)
+			.append("g");      
+		d3.csv("All Force Graph - Date Range.csv", function (data) {
+			//set up graph in same style as original example but empty
+			graph = { "nodes": [], "links": [] };
+			//loop through each link record from the csv data
+			//add to the nodes each source and target; we'll reduce to unique values later
+			//add to the links each source, target record with the value (if desired, multiple value fields can be added)
+			data.forEach(function (d) {
+				d.Month = +d.Month;
+				d.Year = +d.Year;
+				//Logic to determine if a node is between the start and end date and pushing it back onto the arrays to draw
+				if (startYear == endYear){ //If the start and and date have the same year
+					if ((d.Year == startYear )&&(d.Month >= startMonth)&&(d.Month <= endMonth)){
+						graph.nodes.push({ "name": d.sourceID, "group": +d.groupsource, "url": d.sourceID, "nodesize":+d.sourceValue, "label": d.source});
+						graph.nodes.push({ "name": d.targetID, "group": +d.grouptarget, "url": d.targetID, "nodesize":+d.targetValue, "label": d.target});
+						graph.links.push({ "source": d.sourceID, "target": d.targetID, "value": +d.value });
+					}
+				}	
+			
+				else{	//Every other instance where the information is across separate years
+					if ((d.Year == startYear )&&(d.Month >= startMonth)){
+						graph.nodes.push({ "name": d.sourceID, "group": +d.groupsource, "url": d.sourceID, "nodesize":+d.sourceValue, "label": d.source});
+						graph.nodes.push({ "name": d.targetID, "group": +d.grouptarget, "url": d.targetID, "nodesize":+d.targetValue, "label": d.target});
+						graph.links.push({ "source": d.sourceID, "target": d.targetID, "value": +d.value });
+					}
+					else if ((d.Year > startYear)&&(d.Year < endYear)) {
+						graph.nodes.push({ "name": d.sourceID, "group": +d.groupsource, "url": d.sourceID, "nodesize":+d.sourceValue, "label": d.source});
+						graph.nodes.push({ "name": d.targetID, "group": +d.grouptarget, "url": d.targetID, "nodesize":+d.targetValue, "label": d.target});
+						graph.links.push({ "source": d.sourceID, "target": d.targetID, "value": +d.value });
+					}
+					else if ((d.Year == endYear)&&(d.Month <= endMonth)){
+						graph.nodes.push({ "name": d.sourceID, "group": +d.groupsource, "url": d.sourceID, "nodesize":+d.sourceValue, "label": d.source});
+						graph.nodes.push({ "name": d.targetID, "group": +d.grouptarget, "url": d.targetID, "nodesize":+d.targetValue, "label": d.target});
+						graph.links.push({ "source": d.sourceID, "target": d.targetID, "value": +d.value });
+					}
+				}
+			});
+			//use this as temporary holding while we manipulate graph.nodes
+			//this will contain a map object containing an object for each node
+			//within each node object there will be a child object for each instance that node appear
+			//however, using rollup we can eliminate this duplication
+			var nodesmap = d3.nest()
+				.key(function (d) { return d.name; })
+				.rollup(function (d) { return { "name": d[0].label, "group": d[0].group, "url": d[0].url, "nodesize": d[0].nodesize}; })
+				.map(graph.nodes);
+			//thanks Mike Bostock https://groups.google.com/d/msg/d3-js/pl297cFtIQk/Eso4q_eBu1IJ
+			//this handy little function returns only the distinct / unique nodes
+			graph.nodes = d3.keys(d3.nest()
+				.key(function (d) { return d.name; })
+				.map(graph.nodes));
+                             
+			//it appears d3 with force layout wants a numeric source and target
+			//so loop through each link replacing the text with its index from node
+			graph.links.forEach(function (d, i) {
+				graph.links[i].source = graph.nodes.indexOf(graph.links[i].source);
+				graph.links[i].target = graph.nodes.indexOf(graph.links[i].target);
+			});
+			//this is not in the least bit pretty
+			//will get graph.nodes in its final useable form
+			//loop through each unique node and replace with an object with same numeric key and name/group as properties
+			//that will come from the nodesmap that we defined earlier
+			graph.nodes.forEach(function (d,i) { graph.nodes[i]={ "name": nodesmap[d].name, "group": nodesmap[d].group, "url": nodesmap[d].url, "nodesize": nodesmap[d].nodesize }; })
+			force
+				.nodes(graph.nodes)
+				.links(graph.links)
+				.start();
+			var link = svg.selectAll(".link")
+				.data(graph.links)
+				.enter().append("line")
+				.attr("class", "link")
+				.style("stroke-width", function (d) { return Math.sqrt(d.value); });
+			var node = svg.selectAll(".node")
+				.data(graph.nodes)
+				.enter().append("circle")
+				.attr("class", "node")
+				.attr("r", function (d) { return Math.sqrt(d.nodesize * 10); })
+				.style("fill", function (d) { return color[d.group-1]; })
+				.on("dblclick", function(d) {window.open("http://heurist.sydney.edu.au/h4/records/view/renderRecordData.php?db=lmatt_MIMC&recID=" + d.url,"_blank");})
+				.call(force.drag);
+			node.append("title")
+				.text(function (d) { return d.name; });
+			force.on("tick", function () {
+            link.attr("x1", function (d) { return d.source.x; })
+				.attr("y1", function (d) { return d.source.y; })
+				.attr("x2", function (d) { return d.target.x; })
+				.attr("y2", function (d) { return d.target.y; });
+            node.attr("cx", function (d) { return d.x; })
+				.attr("cy", function (d) { return d.y; });
+			});
+		});
+	}
+
+function setDates() {	//The function that is run when the button "Run" is pressed
+		var x = document.getElementById("StartDate"); //Separate the values used in the form
+		var y = document.getElementById("EndDate");
+		startMonth = parseInt(x.elements[0].value);
+		startYear = parseInt(x.elements[1].value);
+		endMonth = parseInt(y.elements[0].value);
+		endYear = parseInt(y.elements[1].value);
+		d3.select("svg").remove();	//Delete the information currently stored in the svg area
+		draw()	//run the function draw to create the updated date range
+}
+</script>        
+</body>
+</html>

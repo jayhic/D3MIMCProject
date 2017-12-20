@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- modified from https://bl.ocks.org/mbostock/3888852!-->
+<meta charset="utf-8">
+<style>
+
+body {
+  `font: 10px sans-serif;
+}
+
+svg {
+  `padding: 10px 0 0 10px;
+}
+
+.arc {
+  `stroke: #fff;
+}
+</style>
+
+<body>
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="https://rawgit.com/Caged/d3-tip/master/index.js"></script> <!--Import tooltip functionality -->
+<link rel="stylesheet" href="https://rawgithub.com/Caged/d3-tip/master/examples/example-styles.css"> <!--Import tooltip stylesheet -->
+<script>
+
+var radius = 74,
+    padding = 10;
+
+var color = d3.scale.ordinal()
+	.range(["#d65108", "#59cbe7", "#efc021", "#672b53"]); //Colors for the chart
+
+var arc = d3.svg.arc()
+    .outerRadius(radius)
+    .innerRadius(radius - 30);
+
+var pie = d3.layout.pie()
+    .sort(null)
+    .value(function(d) { return d.count; });
+
+d3.csv("PieChart CSV/Years - Events.csv", function(error, data) {
+	if (error) throw error;
+
+	color.domain(d3.keys(data[0]).filter(function(key) { return key !== "issue"; }));
+
+	data.forEach(function(d) {
+		d.type = color.domain().map(function(name) {
+		return {name: name, count: +d[name]};
+		});
+	});
+	
+	var legend = d3.select("body").append("svg") //Create a legend
+		.attr("class", "legend")
+		.attr("width", radius * 2)
+		.attr("height", radius * 2)
+		.selectAll("g")
+		.data(color.domain().slice(0,4))
+		.enter().append("g")
+		.attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+	legend.append("rect") //Draw rectangles on legend
+		.attr("width", 18)
+		.attr("height", 18)
+		.style("fill", color);
+
+	legend.append("text") //Add text to legend
+		.attr("x", 24)
+		.attr("y", 9)
+		.attr("dy", ".35em")
+		.text(function(d) { return d; });
+
+	var svg = d3.select("body").selectAll(".pie") //Draw initial pies
+		.data(data)
+		.enter().append("svg")
+		.attr("class", "pie")
+		.attr("width", radius * 2)
+		.attr("height", radius * 2)
+		.append("g")
+		.attr("transform", "translate(" + radius + "," + radius + ")");
+
+	var tip = d3.tip() //Call in tooltip
+		.attr('class', 'd3-tip')
+		.html(function(d) { return d.data.count; })
+		.direction('s')
+	svg.call(tip);
+
+	svg.selectAll(".arc") //Fill in the pies with the correct arcs
+		.data(function(d) { return pie(d.type); })
+		.enter().append("path")
+		.attr("class", "arc")
+		.attr("d", arc)
+		.style("fill", function(d) { return color(d.data.name); })
+		.on('mouseover', tip.show)
+		.on('mouseout', tip.hide);
+
+	svg.append("text") //Add middle text to display the year it is associated with
+		.attr("dy", ".35em")
+		.style("text-anchor", "middle")
+		.text(function(d) { return d.issue; });
+      
+	var toolTip = d3.select("body").append("g") //Attach tooltip to the chart
+		.attr("class", "tooltip");
+});
+</script>

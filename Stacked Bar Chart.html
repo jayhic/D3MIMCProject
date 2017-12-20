@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<!-- modified from https://bl.ocks.org/mjfoster83/7c9bdfd714ab2f2e39dd5c09057a55a0 !-->
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="d3-tip.js"></script>	<!-- import the tooltip function -->
+
+<style>
+body {
+  font-family: 'Open Sans', sans-serif;
+}
+#main {
+  width: 960px;
+}
+.axis .domain {
+  display: none;
+}
+
+.d3-tip {	<!-- since this graph is using D3 v4 the tooltip method for v3 doesnt work so need to implement the tip style here -->
+	line-height: 1;
+	font-weight: bold;
+	padding: 12px;
+	background: rgba(0, 0, 0, 0.8);
+	color: #fff;
+	border-radius: 2px;
+}
+.d3-tip:after {
+	box-sizing: border-box;
+	display: inline;
+	font-size: 10px;
+	width: 100%;
+	line-height: 1;
+	color: rgba(0, 0, 0, 0.8);
+	position: absolute;
+	text-align: center;
+}
+    
+<!-- Southward tooltips -->
+.d3-tip.s:after {
+	content: "\25B2";
+	margin: 0 0 1px 0;
+	top: -8px;
+	left: 0;
+	text-align: center;
+}
+
+</style>
+<div id="main">
+<svg width="960" height="500"></svg>
+</div>
+
+
+<script>
+// create the svg
+var svg = d3.select("svg"),
+	margin = {top: 20, right: 20, bottom: 30, left: 40},
+    width = +svg.attr("width") - margin.left - margin.right,
+    height = +svg.attr("height") - margin.top - margin.bottom,
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var tool_tip = d3.tip()	
+		.attr("class", "d3-tip")
+		.offset([-8, 0])
+		.html(function(d) { return (d[1]-d[0]); })
+		.direction('s');
+    svg.call(tool_tip);
+
+
+// set x scale
+var x = d3.scaleBand()
+	.rangeRound([0, width])
+	.paddingInner(0.05)
+	.align(0.1);
+
+// set y scale
+var y = d3.scaleLinear()
+	.rangeRound([height, 0]);
+
+// set the colors
+var z = d3.scaleOrdinal()
+	.range(["#d65108", "#007aa3", "#efc021", "#672b53"]);
+
+// load the csv and create the chart
+d3.csv("Stacked Bar Chart Year Data.csv", function(d, i, columns) {
+	for (i = 1, t = 0; i < columns.length; ++i) t += d[columns[i]] = +d[columns[i]];
+		d.total = t;
+		return d;
+	}, function(error, data) {
+		if (error) throw error;
+
+	var keys = data.columns.slice(1);
+
+	x.domain(data.map(function(d) { return d.Year; }));
+	y.domain([0, d3.max(data, function(d) { return d.total; })]).nice();
+	z.domain(keys);
+
+	g.append("g")	//Draws on boxes
+		.selectAll("g")
+		.data(d3.stack().keys(keys)(data))
+		.enter().append("g")
+		.attr("fill", function(d) { return z(d.key); })
+		.selectAll("rect")
+		.data(function(d) { return d; })
+		.enter().append("rect")
+		.attr("x", function(d) { return x(d.data.Year); })
+		.attr("y", function(d) { return y(d[1]); })
+		.attr("height", function(d) { return y(d[0]) - y(d[1]); })
+		.attr("width", x.bandwidth())
+		.on("mouseover", tool_tip.show)
+		.on("mouseout", tool_tip.hide);
+
+	g.append("g") //Draw On Axis
+		.attr("class", "axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(d3.axisBottom(x));
+
+	g.append("g")			//Draw On Axis
+		.attr("class", "axis")
+		.call(d3.axisLeft(y).ticks(null, "s"))
+		.append("text")
+		.attr("x", 2)
+		.attr("y", y(y.ticks().pop()) + 0.5)
+		.attr("dy", "0.32em")
+		.attr("fill", "#000")
+		.attr("font-weight", "bold")
+		.attr("text-anchor", "start")
+		.text("Travel Sheet Information");
+
+	var legend = g.append("g")	//Create Legend
+		.attr("font-family", "sans-serif")
+		.attr("font-size", 10)
+		.selectAll("g")
+		.data(keys.slice().reverse())
+		.enter().append("g")
+		.attr("transform", function(d, i) { return "translate(0," + ((i * 20)+15) + ")"; });
+
+	legend.append("rect")	//Draw Boxes for legend
+		.attr("x", 19)
+		.attr("width", 19)
+		.attr("height", 19)
+		.attr("fill", z);
+
+	legend.append("text")	//Write Text for legend
+		.attr("x", 40)
+		.attr("y", 9.5)
+		.attr("dy", "0.32em")
+		.text(function(d) { return d; });
+
+});
+
+</script>
